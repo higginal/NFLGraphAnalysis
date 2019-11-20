@@ -60,12 +60,14 @@ def calculateSOS(team, duplicates=True):
     points = 0
     seenTeams = set()
     for t in graph[team]:
+        #print(t)
+        #print(len(graph[t[0]]))
         if not duplicates:
             if t[0] not in seenTeams:
-                points += len(graph[team])
+                points += len(graph[t[0]])
                 seenTeams.add(t[0])
         else:
-            points += len(graph[team])
+            points += len(graph[t[0]])
 
         
     return points
@@ -79,6 +81,16 @@ def cmp_highest_degree(x, y):
   
 #generates graph for weeks 1 - 18 for the given year
 def fillGraph(year, graph):
+
+    all_teams = {'Philadelphia Eagles', 'Baltimore Ravens', 'Jacksonville Jaguars','New England Patriots', 'Tampa Bay Buccaneers', 
+                'Minnesota Vikings', 'Miami Dolphins', 'Cincinnati Bengals', 'Kansas City Chiefs', 'Carolina Panthers', 'Denver Broncos',
+                'Washington Redskins', 'Green Bay Packers', 'New York Jets', 'Los Angeles Rams', 'Los Angeles Chargers', 'Atlanta Falcons',
+                'Indianapolis Colts', 'Tennessee Titans', 'New Orleans Saints', 'San Francisco 49ers', 'Dallas Cowboys', 'Chicago Bears',
+                'Cleveland Browns', 'Buffalo Bills', 'New York Giants', 'Seattle Seahawks', 'Detroit Lions', 'Pittsburgh Steelers',
+                'Houston Texans', 'Oakland Raiders', 'Arizona Cardinals'}
+    #print(len(all_teams))
+
+    found_teams = set()
 
     url = "https://www.pro-football-reference.com/years/" + str(year) + "/week_"
 
@@ -94,16 +106,22 @@ def fillGraph(year, graph):
             loser = game.find('tr', {'class': 'loser'})
             if winner != None and loser != None:
                 team = winner.find('a').text
-
+                found_teams.add(team)
                 if team not in graph:
                     graph[team] = []
                 
                 graph[team].append((loser.find('a').text, x))
+    
+    non_winning_teams = all_teams - found_teams
+    #print(non_winning_teams)
+    for x in non_winning_teams:
+        graph[x] = []
 
 
 scores = {}
 
 graph = {}
+
 
 if(len(sys.argv) < 2):
     print("use 'a' for graph")
@@ -119,6 +137,7 @@ if(sys.argv[1] == 'b'):
     for x in range(lowerBound, upperBound):
         graph = {}
         fillGraph(x, graph)
+
         teamNames = [str(x) for x in graph.keys()]
         teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
         teamPoints = [calculateSOS(name) for name in teamNames]
@@ -134,6 +153,7 @@ if(sys.argv[1] == 'a'):
 
     year = int(input("Enter year: "))
     fillGraph(year, graph)
+
     teamNames = [str(x) for x in graph.keys()]
     teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
     teamPoints = [calculateSOS(name) for name in teamNames]
