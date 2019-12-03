@@ -67,7 +67,10 @@ def calculateSOS(team, duplicates=True):
                 points += len(graph[t[0]])
                 seenTeams.add(t[0])
         else:
-            points += len(graph[t[0]])
+            if(t[0] in graph):
+                points += len(graph[t[0]])
+            else:
+                points += 0
 
         
     return points
@@ -113,7 +116,7 @@ def fillGraph(year, graph):
                 graph[team].append((loser.find('a').text, x))
     
     non_winning_teams = all_teams - found_teams
-    #print(non_winning_teams)
+    print(non_winning_teams)
     for x in non_winning_teams:
         graph[x] = []
 
@@ -160,9 +163,33 @@ if(sys.argv[1] == 'a'):
 
 
     team_data = pd.DataFrame(dict(teams=teamNames, points=teamPoints))
+
+    writer = pd.ExcelWriter('/Users/averyhiggins/Desktop/nfl study/' + str(year) + '.xlsx', engine='xlsxwriter')
+    team_data.to_excel(writer, sheet_name='Week13')
+    writer.save()
+
     team_data = team_data.melt(id_vars="teams")
 
     fig = px.bar(team_data, x="teams", y= "value")
 
     fig.show()
 
+if(sys.argv[1] == 'c'):
+    lowerBound = int(input("Enter the start year: "))
+    upperBound = int(input("Enter the end year: "))
+
+    best_teams = dict()
+
+    for x in range(lowerBound, upperBound):
+        graph = {}
+        fillGraph(x, graph)
+
+        teamNames = [str(x) for x in graph.keys()]
+        teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
+        if teamNames[0] not in best_teams:
+            best_teams[teamNames[0]] = 0
+        
+        best_teams[teamNames[0]] = best_teams[teamNames[0]] + 1
+
+    for x in best_teams:
+        print(x + " " + str(best_teams[x]))
