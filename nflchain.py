@@ -82,8 +82,56 @@ def cmp_highest_degree(x, y):
     else:
         return 1;
   
+
+def QB_interc(year):
+    url = "https://www.pro-football-reference.com/years/2019/passing.htm"
+    req = requests.get(url)
+    soup = Soup(req.text)
+    players = {}
+    player_percent = {}
+    counter  = 0
+    sum_ints = 0
+    table = soup.find('table', {'class': 'sortable stats_table'})
+    for player in table.find_all('tr'):
+        name = player.find('td', {'data-stat': 'player'})
+        ints = player.find('td', {'data-stat': 'pass_int'})
+        if (name != None and ints != None):
+            #print(name.text + " " + ints.text)
+            players[name.text] = int(ints.text)
+            sum_ints += int(ints.text)
+            #print(str(sum_ints) + " " + str(counter))
+            counter += 1
+    #print(sum_ints)
+    print("Name-----------------Int Percentage----------------")
+    for x in players:
+        percent = players[x] / sum_ints
+        player_percent[x] = percent
+        print("{0:21}{1}".format(x, str(percent)) )
+       # print(x + "-----------------" + str(percent) + "-----------------")
+
+
+
+    names = player_percent.keys()
+    ints = player_percent.values()
+    #print(names)
+    #print(ints)
+    #player_data = pd.DataFrame(dict(names = names, int_percent = ints))
+
+#player_data = pd.DataFrame(players)
+
+    #player_data = player_data.melt(id_vars="name")
+    #print(player_data)
+    #player_data = player_data.melt(id_vars = 'names')
+    #print(player_data)
+    #fig = px.bar(player_data, x="names", y= "value")
+
+    #fig.show()
+
+    #fig = px.pie(player_data,  values='int_percent', names='names')
+    #fig.show()
+
 #generates graph for weeks 1 - 18 for the given year
-def fillGraph(year, graph):
+def fillGraph(year, graph, week):
 
     all_teams = {'Philadelphia Eagles', 'Baltimore Ravens', 'Jacksonville Jaguars','New England Patriots', 'Tampa Bay Buccaneers', 
                 'Minnesota Vikings', 'Miami Dolphins', 'Cincinnati Bengals', 'Kansas City Chiefs', 'Carolina Panthers', 'Denver Broncos',
@@ -97,7 +145,7 @@ def fillGraph(year, graph):
 
     url = "https://www.pro-football-reference.com/years/" + str(year) + "/week_"
 
-    for x in range (1, 18):
+    for x in range (1, week):
     #print(x)
         scores[x] = requests.get(url + str(x) + ".htm")
         soup = Soup(scores[x].text)
@@ -116,7 +164,7 @@ def fillGraph(year, graph):
                 graph[team].append((loser.find('a').text, x))
     
     non_winning_teams = all_teams - found_teams
-    print(non_winning_teams)
+    #print(non_winning_teams)
     for x in non_winning_teams:
         graph[x] = []
 
@@ -131,6 +179,9 @@ if(len(sys.argv) < 2):
     print("use 'b' for years")
     exit()
 
+if(sys.argv[1] == 'q'):
+    QB_interc(2019)
+
 #parser = HTMLParser()
 if(sys.argv[1] == 'b'):
     highestDiff = (0, "", 0, 0)
@@ -139,7 +190,7 @@ if(sys.argv[1] == 'b'):
 
     for x in range(lowerBound, upperBound):
         graph = {}
-        fillGraph(x, graph)
+        fillGraph(x, graph, 18)
 
         teamNames = [str(x) for x in graph.keys()]
         teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
@@ -155,18 +206,65 @@ if(sys.argv[1] == 'b'):
 if(sys.argv[1] == 'a'):
 
     year = int(input("Enter year: "))
-    fillGraph(year, graph)
+    
+    teamPoints = []
 
-    teamNames = [str(x) for x in graph.keys()]
-    teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
-    teamPoints = [calculateSOS(name) for name in teamNames]
+    for x in range(1, 18):
+        graph = {}
+        fillGraph(year, graph, x)
+        print(len(graph))
+        teamNames = [str(x) for x in graph.keys()]
+        teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
+        #print(x)
+        #teamPoints[x] = "billy"
+        teamPoints.append([calculateSOS(name) for name in teamNames])
+       
+        #print(len(teamPoints[x - 1]))
+        #print("graph: " + str(len(graph)))
+
+    #print(teamPoints[0])
+    #print(teamPoints[6])
+    maxTeams = 0
+    for pointList in teamPoints:
+        if(len(pointList) > maxTeams):
+            maxTeams = len(pointList)
+
+    for pointList in teamPoints:
+        if(len(pointList) < maxTeams):
+            pointList.append([0] * (maxTeams - len(pointList)))
+    
+    if len(teamNames) < maxTeams:
+        teamNames.append("" * (maxTeams - len(teamNames)))
 
 
-    team_data = pd.DataFrame(dict(teams=teamNames, points=teamPoints))
+    #if (len(teamPoints[x-1]) < 33):
+    #        missing = 32 - len(teamPoints[x-1])
+    #        teamPoints[x-1].append([0] * missing)
+    #        teamNames.append("" * missing)
+
+    print(len(teamPoints))
+
+
+    team_data = pd.DataFrame(dict(teams=teamNames, week1=teamPoints[0], week2=teamPoints[1], week3=teamPoints[2],
+                                week4=teamPoints[3], week5=teamPoints[4], week6=teamPoints[5], week7=teamPoints[6],
+                                week8=teamPoints[7], week9=teamPoints[8], week10=teamPoints[9], week11=teamPoints[10],
+                                week12=teamPoints[11], week13=teamPoints[12], week14=teamPoints[13], week15=teamPoints[14],
+                                week16=teamPoints[15], week17=teamPoints[16]))
 
     writer = pd.ExcelWriter('/Users/averyhiggins/Desktop/nfl study/' + str(year) + '.xlsx', engine='xlsxwriter')
+    #writer.book = load_workbook('2019.xlsx')
+    #writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
+
+    #reader = pd.read_excel(r'2019.xlsx')
+
     team_data.to_excel(writer, sheet_name='Week13')
     writer.save()
+    teamNames = [str(x) for x in graph.keys()]
+    
+    teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
+    teamPointsFinal = [calculateSOS(name) for name in teamNames]
+    team_data = pd.DataFrame(dict(teams=teamNames, points=teamPointsFinal))
+    print(len(teamNames))
 
     team_data = team_data.melt(id_vars="teams")
 
@@ -182,7 +280,7 @@ if(sys.argv[1] == 'c'):
 
     for x in range(lowerBound, upperBound):
         graph = {}
-        fillGraph(x, graph)
+        fillGraph(x, graph, 18)
 
         teamNames = [str(x) for x in graph.keys()]
         teamNames = sorted(teamNames, key= cmp_to_key(cmp_highest_degree))
